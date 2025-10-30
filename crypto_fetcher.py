@@ -8,6 +8,7 @@ import os
 import requests
 import pandas as pd
 from typing import Optional, Dict, List
+from dotenv import load_dotenv
 
 
 class CryptoDataFetcher:
@@ -16,6 +17,10 @@ class CryptoDataFetcher:
     """
     
     BASE_URL = "https://pro-api.coinmarketcap.com/v1"
+    PRICE_DECIMAL_THRESHOLD = 1.0
+    BILLION = 1_000_000_000
+    MILLION = 1_000_000
+    THOUSAND = 1_000
     
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -24,6 +29,9 @@ class CryptoDataFetcher:
         Args:
             api_key: CoinMarketCap API key. If not provided, will try to read from environment.
         """
+        # Load environment variables from .env file if it exists
+        load_dotenv()
+        
         self.api_key = api_key or os.getenv('COINMARKETCAP_API_KEY')
         if not self.api_key:
             raise ValueError("API key is required. Set COINMARKETCAP_API_KEY environment variable or pass it as parameter.")
@@ -108,8 +116,10 @@ class CryptoDataFetcher:
         Returns:
             Formatted DataFrame
         """
-        # Format price with 2 decimal places for values > 1, more for smaller values
-        df['Price'] = df['Price'].apply(lambda x: f"${x:,.2f}" if x >= 1 else f"${x:,.6f}")
+        # Format price with 2 decimal places for values > threshold, more for smaller values
+        df['Price'] = df['Price'].apply(
+            lambda x: f"${x:,.2f}" if x >= self.PRICE_DECIMAL_THRESHOLD else f"${x:,.6f}"
+        )
         
         # Format large numbers with K, M, B suffixes
         df['Market Cap'] = df['Market Cap'].apply(self._format_large_number)
@@ -135,12 +145,12 @@ class CryptoDataFetcher:
         if pd.isna(num):
             return 'N/A'
         
-        if num >= 1_000_000_000:
-            return f"${num / 1_000_000_000:,.2f}B"
-        elif num >= 1_000_000:
-            return f"${num / 1_000_000:,.2f}M"
-        elif num >= 1_000:
-            return f"${num / 1_000:,.2f}K"
+        if num >= self.BILLION:
+            return f"${num / self.BILLION:,.2f}B"
+        elif num >= self.MILLION:
+            return f"${num / self.MILLION:,.2f}M"
+        elif num >= self.THOUSAND:
+            return f"${num / self.THOUSAND:,.2f}K"
         else:
             return f"${num:,.2f}"
     
